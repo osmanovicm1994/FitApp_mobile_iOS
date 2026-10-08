@@ -248,6 +248,10 @@ struct WorkoutHistoryView: View {
                         Text("\(session.exercises.count) exercises")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        Text("\(session.completedCount) completed")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                            .accessibilityIdentifier("workout_history_completed_\(session.id)")
                     }
                     .padding(.vertical, 4)
                     .accessibilityIdentifier("workout_history_row_\(session.id)")
@@ -339,6 +343,7 @@ struct EditProfileSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveProfile() }
+                        .disabled(!isValid)
                         .accessibilityIdentifier("save_profile_button")
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -349,6 +354,16 @@ struct EditProfileSheet: View {
         }
         .onAppear { populateFromProfile() }
         .accessibilityIdentifier("edit_profile_sheet")
+    }
+
+    /// Age, weight and height must parse (comma or dot decimals) and fall inside ProfileLimits.
+    private var isValid: Bool {
+        guard let a = NumberParsing.int(from: age), ProfileLimits.age.contains(a),
+              let w = NumberParsing.double(from: weightKg), ProfileLimits.weightKg.contains(w),
+              let h = NumberParsing.double(from: heightCm), ProfileLimits.heightCm.contains(h) else {
+            return false
+        }
+        return true
     }
 
     private func populateFromProfile() {
@@ -363,10 +378,10 @@ struct EditProfileSheet: View {
     private func saveProfile() {
         appState.profile = UserProfile(
             id: appState.profile.id,
-            name: name,
-            age: Int(age) ?? appState.profile.age,
-            weightKg: Double(weightKg) ?? appState.profile.weightKg,
-            heightCm: Double(heightCm) ?? appState.profile.heightCm,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            age: NumberParsing.int(from: age) ?? appState.profile.age,
+            weightKg: NumberParsing.double(from: weightKg) ?? appState.profile.weightKg,
+            heightCm: NumberParsing.double(from: heightCm) ?? appState.profile.heightCm,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar.isEmpty ? appState.profile.avatarEmoji : selectedAvatar
         )

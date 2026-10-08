@@ -198,7 +198,7 @@ struct WorkoutView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 10) {
-            Button(action: { appState.finishWorkout() }) {
+            Button(action: { _ = appState.finishWorkout() }) {
                 Label("Finish Workout", systemImage: "checkmark.circle.fill")
                     .fontWeight(.bold)
                     .frame(maxWidth: .infinity)
@@ -211,6 +211,7 @@ struct WorkoutView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .shadow(color: .green.opacity(0.3), radius: 8, y: 4)
             }
+            .disabled(appState.completedExercisesCount == 0)
             .accessibilityIdentifier("finish_workout_button")
 
             HStack(spacing: 10) {
@@ -347,7 +348,9 @@ struct AddExerciseSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        appState.addExercise(name: name, sets: Int(sets) ?? 3, reps: Int(reps) ?? 10)
+                        appState.addExercise(name: name,
+                                             sets: NumberParsing.int(from: sets) ?? 3,
+                                             reps: NumberParsing.int(from: reps) ?? 10)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

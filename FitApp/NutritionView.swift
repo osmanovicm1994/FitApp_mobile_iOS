@@ -7,6 +7,7 @@ import Combine  // explicit import
 struct NutritionView: View {
     @EnvironmentObject var appState: AppState
     @State private var showLogMacros: Bool = false
+    @State private var showResetDayAlert: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -18,6 +19,8 @@ struct NutritionView: View {
                     macroCard
                     // Quick log buttons
                     quickActionsCard
+                    // Today's meals (with delete)
+                    mealsCard
                 }
                 .padding()
             }
@@ -28,7 +31,7 @@ struct NutritionView: View {
                         .accessibilityIdentifier("log_macros_button")
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Reset Day") { appState.resetNutrition() }
+                    Button("Reset Day") { showResetDayAlert = true }
                         .foregroundColor(.red)
                         .accessibilityIdentifier("reset_nutrition_button")
                 }
@@ -38,6 +41,12 @@ struct NutritionView: View {
             }
         }
         .accessibilityIdentifier("nutrition_view")
+        .alert("Reset today's nutrition?", isPresented: $showResetDayAlert) {
+            Button("Reset", role: .destructive) { appState.resetNutrition() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes all meals and water logged today. Earlier days are kept.")
+        }
     }
 
     // MARK: - Water Card
@@ -139,6 +148,49 @@ struct NutritionView: View {
         .accessibilityIdentifier("macro_card")
     }
 
+    // MARK: - Today's Meals
+
+    private var mealsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Today's Meals")
+                .font(.headline)
+
+            if appState.todayMeals.isEmpty {
+                Text("No meals logged yet today.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .accessibilityIdentifier("no_meals_label")
+            } else {
+                ForEach(Array(appState.todayMeals.enumerated()), id: \.element.id) { index, meal in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(meal.name)
+                                .font(.subheadline.bold())
+                            Text("\(Int(meal.calories)) kcal · P \(Int(meal.proteinG)) · C \(Int(meal.carbsG)) · F \(Int(meal.fatsG))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            appState.removeMeal(id: meal.id)
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                        .accessibilityIdentifier("delete_meal_\(index)")
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("meal_row_\(index)")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.secondary.opacity(0.06))
+        .cornerRadius(16)
+        .accessibilityIdentifier("meals_card")
+    }
+
     // MARK: - Quick Actions
 
     private var quickActionsCard: some View {
@@ -153,7 +205,9 @@ struct NutritionView: View {
                             protein: meal.protein,
                             carbs: meal.carbs,
                             fats: meal.fats,
-                            calories: meal.calories
+                            calories: meal.calories,
+                            name: meal.name,
+                            source: "quick"
                         )
                     }) {
                         VStack(spacing: 4) {
@@ -252,13 +306,16 @@ struct LogMacrosSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         appState.logNutrition(
-                            protein:  Double(protein)  ?? 0,
-                            carbs:    Double(carbs)    ?? 0,
-                            fats:     Double(fats)     ?? 0,
-                            calories: Double(calories) ?? 0
+                            protein:  parsed?.protein ?? 0,
+                            carbs:    parsed?.carbs ?? 0,
+                            fats:     parsed?.fats ?? 0,
+                            calories: parsed?.calories ?? 0,
+                            name: mealName,
+                            source: "manual"
                         )
                         dismiss()
                     }
+                    .disabled(parsed == nil)
                     .accessibilityIdentifier("save_macros_button")
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -268,6 +325,23 @@ struct LogMacrosSheet: View {
             }
         }
         .accessibilityIdentifier("log_macros_sheet")
+    }
+
+    /// Empty field = 0. Invalid text, negative or absurd values make the whole form invalid.
+    private func fieldValue(_ text: String) -> Double? {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return 0 }
+        guard let v = NumberParsing.double(from: text), v >= 0, v <= 20000 else { return nil }
+        return v
+    }
+
+    /// nil when any field is invalid or when everything is zero.
+    private var parsed: (protein: Double, carbs: Double, fats: Double, calories: Double)? {
+        guard let p = fieldValue(protein),
+              let c = fieldValue(carbs),
+              let f = fieldValue(fats),
+              let k = fieldValue(calories),
+              p + c + f + k > 0 else { return nil }
+        return (p, c, f, k)
     }
 
     private func macroRow(label: String, value: Binding<String>, id: String) -> some View {

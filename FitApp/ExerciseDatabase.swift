@@ -299,7 +299,7 @@ extension Exercise {
                 "Lower slowly — 3 seconds down for maximum tension",
                 "Slight knee bend targets the deeper soleus muscle"
             ],
-            gifFilename: "standingcalf_raise"
+            gifFilename: "standing_calf_raise"
         ),
 
         // ── SHOULDERS ──────────────────────────────────────────────────────

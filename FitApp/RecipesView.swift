@@ -585,7 +585,7 @@ struct RecipesView: View {
             }
             .sheet(item: $selected) { r in
                 RecipeDetailView(
-                    recipe: r,
+                    recipe: appState.fitRecipes.first(where: { $0.id == r.id }) ?? r,
                     onFavorite: { appState.toggleRecipeFavorite(id: r.id) },
                     onLog: { logRecipe = r }
                 )
@@ -1012,7 +1012,9 @@ struct NutritionLogSheet: View {
             protein:  scaledProtein,
             carbs:    scaledCarbs,
             fats:     scaledFat,
-            calories: Double(scaledCalories)
+            calories: Double(scaledCalories),
+            name: recipe.title,
+            source: "recipe"
         )
         dismiss()
     }

@@ -123,6 +123,14 @@ struct OnboardingView: View {
                 statField(label: "Age", value: $age, unit: "years", id: "age_field")
                 statField(label: "Weight", value: $weightKg, unit: "kg", id: "weight_field")
                 statField(label: "Height", value: $heightCm, unit: "cm", id: "height_field")
+
+                if !statsAreValid {
+                    Text("Please enter an age of 10–100, a weight of 20–350 kg and a height of 100–250 cm.")
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("stats_validation_hint")
+                }
             }
         }
     }
@@ -191,8 +199,19 @@ struct OnboardingView: View {
     private var canProceed: Bool {
         switch step {
         case 0: return !name.trimmingCharacters(in: .whitespaces).isEmpty
+        case 1: return statsAreValid
         default: return true
         }
+    }
+
+    /// Age, weight and height must parse (comma or dot decimals) and fall inside ProfileLimits.
+    private var statsAreValid: Bool {
+        guard let a = NumberParsing.int(from: age), ProfileLimits.age.contains(a),
+              let w = NumberParsing.double(from: weightKg), ProfileLimits.weightKg.contains(w),
+              let h = NumberParsing.double(from: heightCm), ProfileLimits.heightCm.contains(h) else {
+            return false
+        }
+        return true
     }
 
     private func nextStep() {
@@ -205,10 +224,10 @@ struct OnboardingView: View {
 
     private func saveProfile() {
         appState.profile = UserProfile(
-            name: name,
-            age: Int(age) ?? 25,
-            weightKg: Double(weightKg) ?? 70,
-            heightCm: Double(heightCm) ?? 170,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            age: NumberParsing.int(from: age) ?? 25,
+            weightKg: NumberParsing.double(from: weightKg) ?? 70,
+            heightCm: NumberParsing.double(from: heightCm) ?? 170,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar
         )

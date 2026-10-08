@@ -8,6 +8,7 @@ struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @State private var showResetAlert: Bool = false
     @State private var showResetProfileAlert: Bool = false
+    @State private var showResetNutritionAlert: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -66,7 +67,7 @@ struct SettingsView: View {
                             .accessibilityIdentifier("settings_protein_goal_value")
                     }
                     Button(role: .destructive) {
-                        appState.resetNutrition()
+                        showResetNutritionAlert = true
                     } label: {
                         Label("Reset Today's Nutrition", systemImage: "arrow.counterclockwise")
                     }
@@ -111,25 +112,23 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .alert("Reset All Data?", isPresented: $showResetAlert) {
                 Button("Reset", role: .destructive) {
-                    appState.resetNutrition()
-                    appState.workoutHistory = []
-                    appState.exercises = [
-                        WorkoutExercise(name: "Push-ups",  sets: 3, reps: 15),
-                        WorkoutExercise(name: "Squats",    sets: 4, reps: 12),
-                        WorkoutExercise(name: "Pull-ups",  sets: 3, reps: 8),
-                        WorkoutExercise(name: "Plank",     sets: 3, reps: 60),
-                        WorkoutExercise(name: "Lunges",    sets: 3, reps: 12),
-                        WorkoutExercise(name: "Crunches",  sets: 3, reps: 20),
-                    ]
+                    appState.resetTrackingData()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will reset all workouts and nutrition data. Your profile will be kept.")
+                Text("This will reset all workouts and nutrition data, including your nutrition history. Your profile will be kept.")
+            }
+            .alert("Reset Today's Nutrition?", isPresented: $showResetNutritionAlert) {
+                Button("Reset", role: .destructive) {
+                    appState.resetNutrition()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes all meals and water logged today. Earlier days are kept.")
             }
             .alert("Reset Profile?", isPresented: $showResetProfileAlert) {
                 Button("Reset", role: .destructive) {
-                    appState.profile = UserProfile()
-                    appState.hasCompletedOnboarding = false
+                    appState.resetProfile()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
