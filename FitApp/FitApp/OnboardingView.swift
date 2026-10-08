@@ -226,8 +226,8 @@ struct OnboardingView: View {
         appState.profile = UserProfile(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             age: NumberParsing.int(from: age) ?? 25,
-            weightKg: NumberParsing.double(from: weightKg) ?? 70,
-            heightCm: NumberParsing.double(from: heightCm) ?? 170,
+            weightKg: NumberParsing.double(from: weightKg).map { NumberParsing.roundedToTenth($0) } ?? 70,
+            heightCm: NumberParsing.double(from: heightCm).map { NumberParsing.roundedToTenth($0) } ?? 170,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar
         )

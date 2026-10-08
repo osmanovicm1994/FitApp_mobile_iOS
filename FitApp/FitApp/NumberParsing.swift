@@ -1,5 +1,5 @@
 // NumberParsing.swift
-// Locale-safe number parsing and the validation limits used by the profile screens.
+// Locale-safe number parsing/formatting and the validation limits used by the profile screens.
 //
 // Why this exists: on devices whose decimal separator is a comma (Bosnian, German, Swedish, ...)
 // the decimal pad types "70,5". Swift's Double("70,5") returns nil, which used to silently
@@ -28,6 +28,21 @@ enum NumberParsing {
               value == value.rounded(),
               abs(value) < 1_000_000 else { return nil }
         return Int(value)
+    }
+
+    /// Rounds to one decimal place (the precision the UI shows), so what is saved is what is displayed.
+    static func roundedToTenth(_ value: Double) -> Double {
+        (value * 10).rounded() / 10
+    }
+
+    /// Formats for display in the user's locale: "82" for whole numbers, "82,5" / "82.5" otherwise.
+    static func display(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 1
+        formatter.usesGroupingSeparator = false
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 }
 

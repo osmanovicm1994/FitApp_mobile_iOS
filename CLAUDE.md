@@ -96,9 +96,10 @@ UserDefaults.standard.set(...)
 
 ### Persistence
 
-All app data is saved as ONE versioned JSON file (`Application Support/FitApp/fitapp-data.json`, model: `AppData` in `AppState.swift`) by `PersistenceStore`. Writes are atomic, the last good copy is kept as `fitapp-data.previous.json`, and an unreadable file is moved aside, never overwritten. `LegacyKeys` (UserDefaults) exist only to migrate installs from older versions.
+All app data is saved as ONE versioned JSON file (`Application Support/FitApp/fitapp-data.json`, model: `AppData` in `AppState.swift`) by `PersistenceStore`. Writes are atomic, the last good copy is kept as `fitapp-data.previous.json`, and an unreadable file is moved aside, never overwritten.
 
 - Never store app data in `UserDefaults`. New persisted fields go into `AppData` (optional or with a default + `decodeIfPresent`).
+- Layout: the Xcode project is `FitApp/FitApp.xcodeproj`; all sources live in `FitApp/FitApp/` (this repo is the single source of truth).
 - Recipe content always comes from `FitRecipe.database` — only the `isFavorite` flag is persisted via `RecipeFavoriteFlag`.
 - Nutrition is a meal log (`MealEntry`) plus water per day (`waterByDay`). "Today" is derived (`todayMeals`, `todayNutrition`), so nothing needs resetting at midnight and history is kept.
 

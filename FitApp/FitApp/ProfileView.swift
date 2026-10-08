@@ -69,8 +69,8 @@ struct ProfileView: View {
     private var statsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             StatCell(label: "Age",    value: "\(appState.profile.age)", unit: "yrs",  id: "profile_age_cell")
-            StatCell(label: "Weight", value: String(format: "%.0f", appState.profile.weightKg), unit: "kg", id: "profile_weight_cell")
-            StatCell(label: "Height", value: String(format: "%.0f", appState.profile.heightCm), unit: "cm", id: "profile_height_cell")
+            StatCell(label: "Weight", value: NumberParsing.display(appState.profile.weightKg), unit: "kg", id: "profile_weight_cell")
+            StatCell(label: "Height", value: NumberParsing.display(appState.profile.heightCm), unit: "cm", id: "profile_height_cell")
         }
         .accessibilityIdentifier("profile_stats_grid")
     }
@@ -369,8 +369,8 @@ struct EditProfileSheet: View {
     private func populateFromProfile() {
         name         = appState.profile.name
         age          = "\(appState.profile.age)"
-        weightKg     = String(format: "%.0f", appState.profile.weightKg)
-        heightCm     = String(format: "%.0f", appState.profile.heightCm)
+        weightKg     = NumberParsing.display(appState.profile.weightKg)
+        heightCm     = NumberParsing.display(appState.profile.heightCm)
         selectedGoal = appState.profile.goal
         selectedAvatar = appState.profile.avatarEmoji
     }
@@ -380,8 +380,8 @@ struct EditProfileSheet: View {
             id: appState.profile.id,
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             age: NumberParsing.int(from: age) ?? appState.profile.age,
-            weightKg: NumberParsing.double(from: weightKg) ?? appState.profile.weightKg,
-            heightCm: NumberParsing.double(from: heightCm) ?? appState.profile.heightCm,
+            weightKg: NumberParsing.double(from: weightKg).map { NumberParsing.roundedToTenth($0) } ?? appState.profile.weightKg,
+            heightCm: NumberParsing.double(from: heightCm).map { NumberParsing.roundedToTenth($0) } ?? appState.profile.heightCm,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar.isEmpty ? appState.profile.avatarEmoji : selectedAvatar
         )

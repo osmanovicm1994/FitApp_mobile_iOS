@@ -8,8 +8,6 @@
 //   • A file that cannot be decoded is MOVED aside (fitapp-data.corrupt-<time>.json), never
 //     overwritten, and the last good copy (fitapp-data.previous.json) is restored if possible.
 //   • A file written by a NEWER app version is never touched (saving is disabled instead).
-//   • Data written by older app versions in UserDefaults is migrated once; the old keys are left
-//     in place so a rollback can never lose anything.
 
 import Foundation
 import os
@@ -40,8 +38,6 @@ final class PersistenceStore {
         case empty
         /// Normal load.
         case loaded(AppData)
-        /// Data was imported from the old UserDefaults storage.
-        case migrated(AppData)
         /// The main file was unreadable/missing; the last good copy was restored.
         case recovered(AppData, message: String)
         /// Nothing could be loaded. `allowSaving == false` means the on-disk data must not be touched.
@@ -144,17 +140,6 @@ final class PersistenceStore {
                               message: "Your main data file was missing, so the last saved copy was restored. Some recent changes may be missing.")
         }
 
-        // Fresh install, or an older version that used UserDefaults.
-        if let legacy = loadLegacyFromUserDefaults() {
-            do {
-                try save(legacy)
-            } catch {
-                // Not fatal: the legacy keys are still there and migration will be retried.
-                Self.log.error("Could not write migrated data: \(error.localizedDescription, privacy: .public)")
-            }
-            return .migrated(legacy)
-        }
-
         return .empty
     }
 
@@ -217,7 +202,7 @@ final class PersistenceStore {
 
     // MARK: - Delete
 
-    /// Removes the data file, its previous copy, quarantined files and the legacy UserDefaults keys.
+    /// Removes the data file, its previous copy and any quarantined files.
     func deleteAllStoredData() {
         let fm = FileManager.default
         if let items = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
@@ -225,66 +210,6 @@ final class PersistenceStore {
                 try? fm.removeItem(at: item)
             }
         }
-        for key in LegacyKeys.all {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
         hasRotatedBackup = false
-    }
-
-    // MARK: - Legacy migration (UserDefaults -> file)
-
-    /// Reads data written by app versions that stored everything in UserDefaults.
-    /// The old keys are intentionally NOT deleted here (safe rollback). They are removed by
-    /// `deleteAllStoredData()`; plan to remove them in a later release once v1 storage is proven.
-    private func loadLegacyFromUserDefaults() -> AppData? {
-        let defaults = UserDefaults.standard
-        guard LegacyKeys.all.contains(where: { defaults.object(forKey: $0) != nil }) else { return nil }
-
-        let decoder = JSONDecoder()   // the old code used the default date strategy
-
-        func decodeValue<T: Decodable>(_ type: T.Type, key: String) -> T? {
-            guard let raw = defaults.data(forKey: key) else { return nil }
-            return try? decoder.decode(T.self, from: raw)
-        }
-
-        var data = AppData()
-
-        if let profile = decodeValue(UserProfile.self, key: LegacyKeys.profile) {
-            data.profile = profile
-        }
-        data.hasCompletedOnboarding = defaults.bool(forKey: LegacyKeys.hasCompletedOnboarding)
-        if defaults.object(forKey: LegacyKeys.isDarkMode) != nil {
-            data.isDarkMode = defaults.bool(forKey: LegacyKeys.isDarkMode)
-        }
-        if let exercises = decodeValue([WorkoutExercise].self, key: LegacyKeys.exercises) {
-            data.exercises = exercises
-        }
-        if let history = decodeValue([WorkoutSession].self, key: LegacyKeys.workoutHistory) {
-            data.workoutHistory = history
-        }
-
-        // The old format only kept ONE aggregate entry for "today". Keep it as a single meal.
-        if let nutrition = decodeValue(NutritionEntry.self, key: LegacyKeys.todayNutrition),
-           let savedDay = defaults.object(forKey: LegacyKeys.todayNutritionDate) as? Date,
-           Calendar.current.isDateInToday(savedDay) {
-            if nutrition.waterMl > 0 {
-                data.waterByDay[AppState.dayKey(for: Date())] = nutrition.waterMl
-            }
-            if nutrition.proteinG + nutrition.carbsG + nutrition.fatsG + nutrition.calories > 0 {
-                data.meals.append(MealEntry(name: "Earlier today",
-                                            proteinG: nutrition.proteinG,
-                                            carbsG: nutrition.carbsG,
-                                            fatsG: nutrition.fatsG,
-                                            calories: nutrition.calories,
-                                            source: "migrated"))
-            }
-        }
-
-        if let flags = decodeValue([LegacyRecipeFavoriteFlag].self, key: LegacyKeys.fitRecipes) {
-            data.favoriteRecipeTitles = flags.filter { $0.isFavorite }.map { $0.title }
-        }
-
-        data.sanitize()
-        return data
     }
 }

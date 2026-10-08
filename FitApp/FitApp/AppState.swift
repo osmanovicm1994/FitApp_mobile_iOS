@@ -2,8 +2,7 @@
 // Central state object for FitApp: ALL state + business logic lives here.
 //
 // PERSISTENCE (schema v1): everything is saved as ONE versioned JSON file through
-// PersistenceStore (see PersistenceStore.swift). UserDefaults is only read once, to migrate
-// data written by older app versions (see LegacyKeys below).
+// PersistenceStore (see PersistenceStore.swift). UserDefaults is not used for app data.
 //
 // Saving is debounced (400 ms) and flushed whenever the app leaves the foreground
 // (FitAppApp calls flush()), so a burst of changes costs one disk write.
@@ -17,30 +16,6 @@
 import SwiftUI
 import Combine
 import os
-
-// MARK: - Legacy UserDefaults keys (read once to migrate older installs; never written)
-
-enum LegacyKeys {
-    static let profile                = "app.profile"
-    static let hasCompletedOnboarding = "app.onboarding"
-    static let isDarkMode             = "app.darkMode"
-    static let exercises              = "app.exercises"
-    static let workoutHistory         = "app.workoutHistory"
-    static let todayNutrition         = "app.todayNutrition"
-    static let todayNutritionDate     = "app.todayNutrition.date"
-    static let fitRecipes             = "app.fitRecipes.favorites"
-
-    static let all: [String] = [
-        profile, hasCompletedOnboarding, isDarkMode, exercises,
-        workoutHistory, todayNutrition, todayNutritionDate, fitRecipes
-    ]
-}
-
-/// Shape of the favourites list written by older versions (UserDefaults).
-struct LegacyRecipeFavoriteFlag: Codable {
-    let title: String
-    let isFavorite: Bool
-}
 
 // MARK: - Models
 
@@ -268,8 +243,6 @@ final class AppState: ObservableObject {
             break
         case .loaded(let loaded):
             data = loaded
-        case .migrated(let migrated):
-            data = migrated
         case .recovered(let recovered, let message):
             data = recovered
             warning = message
