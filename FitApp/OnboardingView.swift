@@ -110,6 +110,8 @@ struct OnboardingView: View {
                 .background(Color.secondary.opacity(0.1))
                 .cornerRadius(12)
                 .accessibilityIdentifier("name_field")
+
+            RestoreFromGoogleButton()
         }
     }
 

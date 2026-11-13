@@ -1,5 +1,6 @@
 // SettingsView.swift
-// App settings: dark/light mode toggle, reset options, about.
+// App settings: dark/light mode toggle, goals, body tracking, backup, reset/delete options,
+// health disclaimer, about.
 
 import SwiftUI
 import Combine  // explicit import
@@ -9,6 +10,7 @@ struct SettingsView: View {
     @State private var showResetAlert: Bool = false
     @State private var showResetProfileAlert: Bool = false
     @State private var showResetNutritionAlert: Bool = false
+    @State private var showDeleteAllAlert: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -50,8 +52,18 @@ struct SettingsView: View {
                     .accessibilityIdentifier("reset_profile_button")
                 }
 
+                // ── Body tracking (weight + measurements) ─────────────────
+                BodyTrackingSettingsSection()
+
                 // ── Nutrition ─────────────────────────────────────────────
-                Section("Nutrition") {
+                Section {
+                    HStack {
+                        Text("Daily Calorie Goal")
+                        Spacer()
+                        Text("\(Int(appState.dailyCalorieGoal)) kcal")
+                            .foregroundColor(.secondary)
+                            .accessibilityIdentifier("settings_calorie_goal_value")
+                    }
                     HStack {
                         Text("Daily Water Goal")
                         Spacer()
@@ -72,7 +84,18 @@ struct SettingsView: View {
                         Label("Reset Today's Nutrition", systemImage: "arrow.counterclockwise")
                     }
                     .accessibilityIdentifier("reset_nutrition_settings_button")
+                } header: {
+                    Text("Nutrition")
+                } footer: {
+                    Text("Goals are rough estimates based on your age, weight, height and goal. They are not medical advice.")
+                        .accessibilityIdentifier("goal_estimate_footer")
                 }
+
+                // ── Backup & Restore (Google) ─────────────────────────────
+                BackupSettingsSection()
+
+                // ── Test install expiry (free developer account only) ─────
+                BuildExpirySettingsSection()
 
                 // ── Data ──────────────────────────────────────────────────
                 Section("Data") {
@@ -82,6 +105,21 @@ struct SettingsView: View {
                         Label("Reset All Data", systemImage: "trash")
                     }
                     .accessibilityIdentifier("reset_all_data_button")
+
+                    Button(role: .destructive) {
+                        showDeleteAllAlert = true
+                    } label: {
+                        Label("Delete All My Data", systemImage: "trash.fill")
+                    }
+                    .accessibilityIdentifier("delete_all_data_button")
+                }
+
+                // ── Health disclaimer ─────────────────────────────────────
+                Section("Health Disclaimer") {
+                    Text("FitApp provides general fitness and nutrition information for educational purposes only. It is not medical advice and does not replace a doctor, dietitian or qualified trainer. Talk to a health professional before changing your diet or starting a new exercise program, and stop exercising if you feel pain, dizziness or unwell.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .accessibilityIdentifier("health_disclaimer_text")
                 }
 
                 // ── About ─────────────────────────────────────────────────
@@ -101,11 +139,11 @@ struct SettingsView: View {
                             .accessibilityIdentifier("settings_version")
                     }
                     HStack {
-                        Text("Recipes from")
+                        Text("Recipes")
                         Spacer()
-                        Link("cleananddelicious.com",
-                             destination: URL(string: "https://cleananddelicious.com")!)
-                            .accessibilityIdentifier("clean_and_delicious_link")
+                        Text("Original FitApp recipes")
+                            .foregroundColor(.secondary)
+                            .accessibilityIdentifier("settings_recipes_source")
                     }
                 }
             }
@@ -116,7 +154,7 @@ struct SettingsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will reset all workouts and nutrition data, including your nutrition history. Your profile will be kept.")
+                Text("This will reset all workouts and nutrition data, including your nutrition history. Your profile, My Foods, My Meals, weight history and body measurements will be kept.")
             }
             .alert("Reset Today's Nutrition?", isPresented: $showResetNutritionAlert) {
                 Button("Reset", role: .destructive) {
@@ -132,7 +170,15 @@ struct SettingsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("You'll be taken back through the onboarding wizard.")
+                Text("You'll be taken back through the onboarding wizard. Your weight history and body measurements are kept.")
+            }
+            .alert("Delete All My Data?", isPresented: $showDeleteAllAlert) {
+                Button("Delete Everything", role: .destructive) {
+                    appState.resetAllData()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes your profile, workouts, nutrition history, My Foods, My Meals, weight history, body measurements and favorites from this device and returns FitApp to its first-launch state. If Google backup is connected, it is disconnected, but the backup already in your Google Drive is kept (delete it first with \"Delete Cloud Backup\" if you want it gone). This cannot be undone.")
             }
         }
         .accessibilityIdentifier("settings_view")

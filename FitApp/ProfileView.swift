@@ -16,6 +16,8 @@ struct ProfileView: View {
                     profileHeader
                     // Stats summary
                     statsGrid
+                    // Weight + measurements progress
+                    bodyProgressCard
                     // Workout summary
                     workoutSummaryCard
                     // Goal card
@@ -73,6 +75,51 @@ struct ProfileView: View {
             StatCell(label: "Height", value: NumberParsing.display(appState.profile.heightCm), unit: "cm", id: "profile_height_cell")
         }
         .accessibilityIdentifier("profile_stats_grid")
+    }
+
+    // MARK: - Body Progress
+
+    private var bodyProgressCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Body Progress", systemImage: "chart.line.uptrend.xyaxis")
+                .font(.headline)
+
+            if let change = appState.totalWeightChangeKg {
+                HStack {
+                    Text("Weight since you started")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(BodyFormat.signed(change)) kg")
+                        .font(.subheadline.bold())
+                        .accessibilityIdentifier("profile_weight_change_label")
+                }
+            } else {
+                Text("Log your weight and body measurements to see your progress here.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .accessibilityIdentifier("profile_body_progress_hint")
+            }
+
+            NavigationLink("Track Weight →") {
+                WeightTrackerView()
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.blue)
+            .accessibilityIdentifier("profile_weight_tracker_link")
+
+            NavigationLink("Body Measurements →") {
+                MeasurementsView()
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.blue)
+            .accessibilityIdentifier("profile_measurements_link")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.secondary.opacity(0.06))
+        .cornerRadius(16)
+        .accessibilityIdentifier("body_progress_card")
     }
 
     // MARK: - Workout Summary
@@ -376,7 +423,8 @@ struct EditProfileSheet: View {
     }
 
     private func saveProfile() {
-        appState.profile = UserProfile(
+        // updateProfile also records a changed weight as today's weigh-in (weight history).
+        appState.updateProfile(UserProfile(
             id: appState.profile.id,
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             age: NumberParsing.int(from: age) ?? appState.profile.age,
@@ -384,7 +432,7 @@ struct EditProfileSheet: View {
             heightCm: NumberParsing.double(from: heightCm).map { NumberParsing.roundedToTenth($0) } ?? appState.profile.heightCm,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar.isEmpty ? appState.profile.avatarEmoji : selectedAvatar
-        )
+        ))
         dismiss()
     }
 }

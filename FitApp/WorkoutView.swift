@@ -12,6 +12,9 @@ struct WorkoutView: View {
     @EnvironmentObject var appState: AppState
     @State private var showAddExercise = false
     @State private var showLibrary     = false
+    @State private var showMyWorkouts  = false
+    @State private var showSaveCurrent = false
+    @State private var newWorkoutName  = ""
     @State private var pulsePhase      = false
 
     var body: some View {
@@ -38,6 +41,19 @@ struct WorkoutView: View {
             }
             .sheet(isPresented: $showLibrary) {
                 ExerciseLibraryView().environmentObject(appState)
+            }
+            .sheet(isPresented: $showMyWorkouts) {
+                MyWorkoutsView().environmentObject(appState)
+            }
+            .alert("Save as workout", isPresented: $showSaveCurrent) {
+                TextField("Name (e.g. Upper Body)", text: $newWorkoutName)
+                Button("Save") {
+                    appState.saveCurrentAsWorkout(name: newWorkoutName)
+                    newWorkoutName = ""
+                }
+                Button("Cancel", role: .cancel) { newWorkoutName = "" }
+            } message: {
+                Text("Saves the exercises on this page so you can load them again any time.")
             }
             .onAppear {
                 withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
@@ -111,9 +127,12 @@ struct WorkoutView: View {
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(2)
                         .accessibilityIdentifier("workout_title")
-                    Text(splitName)
+                    Text(appState.activeWorkout?.name ?? splitName)
                         .font(.system(size: 26, weight: .heavy))
                         .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .accessibilityIdentifier("workout_name_label")
                 }
                 Spacer()
                 progressRing
@@ -215,6 +234,31 @@ struct WorkoutView: View {
             .accessibilityIdentifier("finish_workout_button")
 
             HStack(spacing: 10) {
+                Button { showMyWorkouts = true } label: {
+                    Label("My Workouts", systemImage: "folder.fill")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.green.opacity(0.10))
+                        .foregroundStyle(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .accessibilityIdentifier("my_workouts_button")
+
+                Button { showSaveCurrent = true } label: {
+                    Label("Save as Workout", systemImage: "square.and.arrow.down")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.orange.opacity(0.10))
+                        .foregroundStyle(.orange)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .disabled(appState.exercises.isEmpty)
+                .accessibilityIdentifier("save_as_workout_button")
+            }
+
+            HStack(spacing: 10) {
                 Button { showAddExercise = true } label: {
                     Label("Add Exercise", systemImage: "plus")
                         .font(.subheadline.bold())
@@ -295,7 +339,7 @@ struct WorkoutExerciseRow: View {
                         .font(.headline)
                         .strikethrough(exercise.isCompleted, color: .secondary)
                         .foregroundStyle(exercise.isCompleted ? .secondary : .primary)
-                    Text("\(exercise.sets) sets · \(exercise.reps) reps")
+                    Text("\(exercise.sets) sets · \(exercise.repRange ?? "\(exercise.reps) reps")")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

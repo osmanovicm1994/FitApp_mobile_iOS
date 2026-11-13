@@ -52,3 +52,8 @@ enum ProfileLimits {
     static let weightKg: ClosedRange<Double>   = 20...350
     static let heightCm: ClosedRange<Double>   = 100...250
 }
+
+/// Accepted range for one body measurement (wrist, arm, waist, ...) in centimetres.
+enum MeasurementLimits {
+    static let cm: ClosedRange<Double> = 3...300
+}

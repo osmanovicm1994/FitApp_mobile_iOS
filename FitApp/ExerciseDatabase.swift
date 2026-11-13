@@ -1,5 +1,5 @@
 // ExerciseDatabase.swift
-// Exercise database — 32 exercises mapped to their exact downloaded GIF/PNG filenames.
+// Exercise database — 39 exercises mapped to their exact downloaded GIF/PNG filenames.
 // Filenames match what was downloaded into Assets/ExerciseGIFs/:
 //   • Most are .gif  (e.g. push_up.gif)
 //   • russian_twist  is .png
@@ -95,7 +95,7 @@ struct Exercise: Identifiable {
     }
 }
 
-// MARK: - Database  (32 exercises, exact filenames as downloaded)
+// MARK: - Database  (39 exercises, exact filenames as downloaded)
 
 extension Exercise {
     static let all: [Exercise] = [
@@ -128,6 +128,34 @@ extension Exercise {
                 "Use a spotter for all heavy sets"
             ],
             gifFilename: "barbell_bench_press"
+        ),
+        Exercise(
+            name: "Dumbbell Bench Press",
+            shortDescription: "Chest press with a deeper stretch and free path",
+            fullDescription: "Lying flat on a bench with a dumbbell in each hand, lower the weights to the sides of your chest and press them back up over your chest. Each arm works independently, which fixes strength imbalances and allows a deeper stretch than a barbell.",
+            muscleGroup: .chest, secondaryMuscles: [.shoulders, .arms],
+            difficulty: .beginner, equipment: "Dumbbells + Bench", setsReps: "3 × 8–12",
+            formTips: [
+                "Keep shoulder blades pinched back and down on the bench",
+                "Lower until elbows are about 90° — don't drop below the bench line",
+                "Press up and slightly inward so the dumbbells meet over the chest",
+                "Feet flat on the floor and a slight natural arch in the lower back"
+            ],
+            gifFilename: "dumbbell_bench_press"
+        ),
+        Exercise(
+            name: "Incline Dumbbell Press",
+            shortDescription: "Builds the upper chest and front delts",
+            fullDescription: "Set a bench to a 30–45° incline and press a pair of dumbbells from chest level to overhead lockout. The incline shifts emphasis to the upper (clavicular) chest, giving the chest a fuller look from top to bottom.",
+            muscleGroup: .chest, secondaryMuscles: [.shoulders, .arms],
+            difficulty: .intermediate, equipment: "Dumbbells + Incline Bench", setsReps: "2 × 10–12",
+            formTips: [
+                "Use a 30–45° bench angle — steeper turns it into a shoulder press",
+                "Keep wrists stacked over elbows throughout the press",
+                "Lower slowly until you feel a stretch across the upper chest",
+                "Don't clank the dumbbells together at the top"
+            ],
+            gifFilename: "incline_dumbbell_press"
         ),
         Exercise(
             name: "Dumbbell Fly",
@@ -186,6 +214,20 @@ extension Exercise {
                 "Control the weight back up — 3 seconds up"
             ],
             gifFilename: "lat_pull_down"
+        ),
+        Exercise(
+            name: "Seated Cable Row",
+            shortDescription: "Horizontal pull for mid-back thickness",
+            fullDescription: "Seated at a low cable station with your feet on the platform, pull the handle to your lower ribs and return under control. Builds the rhomboids, mid-traps, and lats that give the back its thickness and keep your posture upright.",
+            muscleGroup: .back, secondaryMuscles: [.arms, .shoulders],
+            difficulty: .beginner, equipment: "Cable Machine", setsReps: "3 × 8–12",
+            formTips: [
+                "Sit tall with a neutral spine — don't rock back and forth",
+                "Drive elbows back and squeeze shoulder blades together",
+                "Pause for 1 second with the handle at your lower ribs",
+                "Let your shoulders stretch forward on the way out, keeping your back flat"
+            ],
+            gifFilename: "seated_cable_row"
         ),
 
         // ── LEGS ───────────────────────────────────────────────────────────
@@ -260,6 +302,20 @@ extension Exercise {
             gifFilename: "dumbbell_lunge"
         ),
         Exercise(
+            name: "Bulgarian Split Squat",
+            shortDescription: "Rear-foot-elevated single-leg quad and glute builder",
+            fullDescription: "With your rear foot resting on a bench behind you, lower straight down on the front leg until the thigh is about parallel, then drive back up. One of the most effective single-leg exercises for quads and glutes, with far less spinal loading than a barbell squat.",
+            muscleGroup: .legs, secondaryMuscles: [.core],
+            difficulty: .intermediate, equipment: "Dumbbells + Bench", setsReps: "2 × 8–12 each leg",
+            formTips: [
+                "Step far enough forward that the front shin stays near vertical at the bottom",
+                "Lower straight down — don't drift forward over the front toes",
+                "Keep your torso tall and your front foot fully planted",
+                "Finish all reps on one leg before switching"
+            ],
+            gifFilename: "bulgarian_split_squat"
+        ),
+        Exercise(
             name: "Hip Thrust",
             shortDescription: "Highest glute activation of any exercise",
             fullDescription: "Upper back on a bench, barbell across hips, bridge upward by squeezing the glutes to full hip extension. Research consistently shows hip thrusts produce greater glute activation than squats or deadlifts.",
@@ -286,6 +342,34 @@ extension Exercise {
                 "High foot placement targets glutes; low targets quads"
             ],
             gifFilename: "leg_press"
+        ),
+        Exercise(
+            name: "Leg Curl",
+            shortDescription: "Machine isolation for the hamstrings",
+            fullDescription: "Seated or lying on a leg curl machine, curl the pad toward your glutes by bending the knees, then return slowly. The most direct way to train the knee-flexion function of the hamstrings, complementing hip-hinge movements like the Romanian deadlift.",
+            muscleGroup: .legs, secondaryMuscles: [],
+            difficulty: .beginner, equipment: "Leg Curl Machine", setsReps: "2 × 10–15",
+            formTips: [
+                "Adjust the pad to sit just above your heels",
+                "Curl smoothly — no jerking or hip lift",
+                "Squeeze for 1 second at full contraction",
+                "Lower the weight slowly over 2–3 seconds"
+            ],
+            gifFilename: "leg_curl"
+        ),
+        Exercise(
+            name: "Leg Extension",
+            shortDescription: "Machine isolation for the quadriceps",
+            fullDescription: "Seated on a leg extension machine, straighten your knees against the pad until your legs are nearly locked out, then lower with control. The best isolation exercise for the quads — great for finishing a leg session after heavier compound lifts.",
+            muscleGroup: .legs, secondaryMuscles: [],
+            difficulty: .beginner, equipment: "Leg Extension Machine", setsReps: "2 × 10–15",
+            formTips: [
+                "Line the machine's pivot up with your knee joint",
+                "Set the pad just above your ankles",
+                "Pause and squeeze the quads for 1 second at the top",
+                "Lower slowly — don't let the stack slam down"
+            ],
+            gifFilename: "leg_extension"
         ),
         Exercise(
             name: "Standing Calf Raise",
@@ -390,6 +474,34 @@ extension Exercise {
             gifFilename: "dumbbell_hammer_curl"
         ),
         Exercise(
+            name: "Triceps Pushdown",
+            shortDescription: "Cable isolation for the triceps",
+            fullDescription: "Standing at a high cable with a rope or bar, keep your upper arms pinned to your sides and extend your elbows until your arms are straight. A simple, joint-friendly way to load the triceps with constant cable tension.",
+            muscleGroup: .arms, secondaryMuscles: [],
+            difficulty: .beginner, equipment: "Cable Machine + Rope", setsReps: "2 × 10–15",
+            formTips: [
+                "Keep elbows tucked at your sides — only the forearms move",
+                "Fully lock out and squeeze the triceps at the bottom",
+                "Spread the rope ends apart at the bottom for extra contraction",
+                "Control the return — don't let the weight yank your arms up"
+            ],
+            gifFilename: "triceps_pushdown"
+        ),
+        Exercise(
+            name: "Overhead Triceps Extension",
+            shortDescription: "Long-head triceps stretch and growth",
+            fullDescription: "Hold a dumbbell overhead with both hands, lower it behind your head by bending the elbows, then extend back up. Training the triceps with the arms overhead stretches the long head — the largest part of the muscle — for maximum growth.",
+            muscleGroup: .arms, secondaryMuscles: [.shoulders],
+            difficulty: .beginner, equipment: "Dumbbell", setsReps: "2 × 10–15",
+            formTips: [
+                "Keep upper arms close to your head and pointing at the ceiling",
+                "Lower until you feel a deep stretch in the back of the arm",
+                "Brace your core — don't flare the ribs or arch your back",
+                "Use a moderate weight and a controlled tempo to protect the elbows"
+            ],
+            gifFilename: "overhead_triceps_extension"
+        ),
+        Exercise(
             name: "Dips",
             shortDescription: "Bodyweight tricep and chest compound",
             fullDescription: "On parallel bars, lower your body by bending the elbows then press back to lockout. Works the triceps (2/3 of the upper arm), chest, and anterior delts. Add weight with a dipping belt to progress.",
@@ -432,6 +544,20 @@ extension Exercise {
                 "Push the floor away hard with your forearms"
             ],
             gifFilename: "plank"
+        ),
+        Exercise(
+            name: "Dead Bug",
+            shortDescription: "Anti-extension core control, spine-friendly",
+            fullDescription: "Lying on your back with arms up and knees bent at 90°, slowly extend the opposite arm and leg toward the floor while keeping your lower back pressed down, then switch sides. Trains deep core control and coordination without loading the spine.",
+            muscleGroup: .core, secondaryMuscles: [.shoulders],
+            difficulty: .beginner, equipment: "None", setsReps: "3 × 8–12 each side",
+            formTips: [
+                "Keep your lower back flat against the floor the entire time",
+                "Move slowly — if your back arches, shorten the range",
+                "Exhale as you extend the arm and leg",
+                "Move opposite arm and leg together, then alternate sides"
+            ],
+            gifFilename: "dead_bug"
         ),
         Exercise(
             name: "Crunch",

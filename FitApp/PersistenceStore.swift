@@ -200,6 +200,15 @@ final class PersistenceStore {
                           options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
+    /// Keeps the data file as it is right now as the "previous" copy (safety net before a restore).
+    func preserveCurrentAsPrevious() {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: fileURL.path) else { return }
+        try? fm.removeItem(at: previousURL)
+        try? fm.copyItem(at: fileURL, to: previousURL)
+        hasRotatedBackup = true
+    }
+
     // MARK: - Delete
 
     /// Removes the data file, its previous copy and any quarantined files.

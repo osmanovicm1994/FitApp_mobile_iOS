@@ -1,5 +1,5 @@
 // NutritionView.swift
-// Daily nutrition tracking: water intake, protein, carbs, fats, calories.
+// Daily nutrition tracking: water intake, protein, carbs, fats, calories, quick log and My Foods.
 
 import SwiftUI
 import Combine  // explicit import
@@ -19,6 +19,10 @@ struct NutritionView: View {
                     macroCard
                     // Quick log buttons
                     quickActionsCard
+                    // The user's own foods
+                    MyFoodsCard()
+                    // Meals built from several foods
+                    MyMealsCard()
                     // Today's meals (with delete)
                     mealsCard
                 }
@@ -115,6 +119,12 @@ struct NutritionView: View {
                     .accessibilityIdentifier("calories_label")
             }
 
+            Text("Daily goal: \(Int(appState.dailyCalorieGoal)) kcal (estimate)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("calorie_goal_label")
+
             HStack(spacing: 12) {
                 MacroRing(
                     label: "Protein",
@@ -127,7 +137,7 @@ struct NutritionView: View {
                 MacroRing(
                     label: "Carbs",
                     value: appState.todayNutrition.carbsG,
-                    goal: 250,
+                    goal: appState.dailyCarbsGoalG,
                     unit: "g",
                     color: .orange,
                     accessID: "carbs_ring"
@@ -135,7 +145,7 @@ struct NutritionView: View {
                 MacroRing(
                     label: "Fats",
                     value: appState.todayNutrition.fatsG,
-                    goal: 65,
+                    goal: appState.dailyFatGoalG,
                     unit: "g",
                     color: .yellow,
                     accessID: "fats_ring"
@@ -285,6 +295,11 @@ struct LogMacrosSheet: View {
     @State private var fats: String = ""
     @State private var calories: String = ""
     @State private var mealName: String = ""
+    @State private var saveAsFood: Bool = false
+
+    private var hasName: Bool {
+        !mealName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         NavigationStack {
@@ -299,20 +314,39 @@ struct LogMacrosSheet: View {
                     macroRow(label: "Fats (g)",    value: $fats,    id: "log_fats_field")
                     macroRow(label: "Calories",    value: $calories, id: "log_calories_field")
                 }
+                if hasName {
+                    Section {
+                        Toggle("Save as a custom food", isOn: $saveAsFood)
+                            .accessibilityIdentifier("save_as_custom_food_toggle")
+                    } footer: {
+                        Text("Adds this meal to My Foods as one serving, so you can log it again in one tap.")
+                    }
+                }
             }
             .navigationTitle("Log Macros")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        let p = parsed?.protein ?? 0
+                        let c = parsed?.carbs ?? 0
+                        let f = parsed?.fats ?? 0
+                        let k = parsed?.calories ?? 0
                         appState.logNutrition(
-                            protein:  parsed?.protein ?? 0,
-                            carbs:    parsed?.carbs ?? 0,
-                            fats:     parsed?.fats ?? 0,
-                            calories: parsed?.calories ?? 0,
+                            protein:  p,
+                            carbs:    c,
+                            fats:     f,
+                            calories: k,
                             name: mealName,
                             source: "manual"
                         )
+                        if saveAsFood && hasName {
+                            appState.saveCustomFood(CustomFood(name: mealName,
+                                                               calories: k,
+                                                               proteinG: p,
+                                                               carbsG: c,
+                                                               fatsG: f))
+                        }
                         dismiss()
                     }
                     .disabled(parsed == nil)

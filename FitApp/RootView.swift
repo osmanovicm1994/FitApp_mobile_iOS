@@ -17,6 +17,15 @@ struct RootView: View {
         )
     }
 
+    private var restoreOfferBinding: Binding<CloudRestoreOffer?> {
+        Binding(
+            get: { appState.restoreOffer },
+            set: { newValue in
+                if newValue == nil { appState.dismissRestoreOffer() }
+            }
+        )
+    }
+
     var body: some View {
         Group {
             if !appState.hasCompletedOnboarding {
@@ -26,6 +35,9 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut, value: appState.hasCompletedOnboarding)
+        .sheet(item: restoreOfferBinding) { offer in
+            RestoreOfferSheet(offer: offer)
+        }
         .alert("Storage notice", isPresented: showStorageWarning) {
             Button("OK", role: .cancel) {}
         } message: {

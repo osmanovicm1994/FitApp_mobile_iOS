@@ -19,9 +19,15 @@ struct FitAppApp: App {
             case .active:
                 // Re-evaluate "today" (the day may have changed while the app was in the background).
                 appState.handleBecameActive()
-            case .inactive, .background:
+                // Free developer account builds expire after 7 days: re-plan the reminder from the current expiry.
+                Task { await BuildExpiry.refreshReminders() }
+            case .inactive:
                 // Write any pending changes now so nothing is lost if the app is killed.
                 appState.flush()
+            case .background:
+                appState.flush()
+                // Upload pending changes to Google Drive (only if connected and auto backup is on).
+                appState.backupWhenLeavingForeground()
             @unknown default:
                 break
             }
