@@ -4,6 +4,7 @@
 
 import SwiftUI
 import Combine  // explicit import
+import FitAppSharedModule
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
@@ -11,6 +12,9 @@ struct SettingsView: View {
     @State private var showResetProfileAlert: Bool = false
     @State private var showResetNutritionAlert: Bool = false
     @State private var showDeleteAllAlert: Bool = false
+#if DEBUG
+    @State private var showSharedExperience = false
+#endif
 
     var body: some View {
         NavigationStack {
@@ -124,6 +128,14 @@ struct SettingsView: View {
 
                 // ── About ─────────────────────────────────────────────────
                 Section("About") {
+#if DEBUG
+                    Button {
+                        showSharedExperience = true
+                    } label: {
+                        Label("Shared Experience Preview", systemImage: "swift")
+                    }
+                    .accessibilityIdentifier("shared_experience_preview_button")
+#endif
                     HStack {
                         Text("App")
                         Spacer()
@@ -148,6 +160,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+#if DEBUG
+            .fullScreenCover(isPresented: $showSharedExperience) {
+                ReactNativeView(moduleName: "main")
+            }
+#endif
             .alert("Reset All Data?", isPresented: $showResetAlert) {
                 Button("Reset", role: .destructive) {
                     appState.resetTrackingData()

@@ -4,6 +4,7 @@
 
 import SwiftUI
 import Combine  // explicit import
+import FitAppSharedModule
 
 struct RootView: View {
     @EnvironmentObject var appState: AppState
@@ -42,6 +43,9 @@ struct RootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(appState.storageWarning ?? "")
+        }
+        .onAppear {
+            ReactNativeHostManager.shared.initialize()
         }
     }
 }

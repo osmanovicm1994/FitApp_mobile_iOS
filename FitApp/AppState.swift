@@ -109,7 +109,7 @@ struct CustomFood: Codable, Identifiable {
 
     /// Atwater estimate: 4 kcal per g of protein and carbs, 9 kcal per g of fat.
     static func estimatedCalories(protein: Double, carbs: Double, fats: Double) -> Double {
-        (protein * 4 + carbs * 4 + fats * 9).rounded()
+        SharedCore.estimateCalories(protein: protein, carbs: carbs, fats: fats)
     }
 }
 
@@ -677,12 +677,7 @@ final class AppState: ObservableObject {
     var dailyWaterGoalMl: Double { 2500 }
 
     var dailyProteinGoalG: Double {
-        switch profile.goal {
-        case .gainMuscle:  return profile.weightKg * 2.2
-        case .loseWeight:  return profile.weightKg * 1.8
-        case .maintain:    return profile.weightKg * 1.5
-        case .performance: return profile.weightKg * 2.0
-        }
+        SharedCore.dailyProteinGoal(weightKg: profile.weightKg, goal: profile.goal)
     }
 
     /// Estimated daily calorie target. ROUGH ESTIMATE, not medical advice.
