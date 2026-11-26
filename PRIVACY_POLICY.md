@@ -1,6 +1,6 @@
 # FitApp Privacy Policy
 
-_Last updated: 12 October 2026_
+_Last updated: 26 November 2026_
 
 FitApp ("the app") is a fitness and nutrition tracker for iPhone. This policy explains what data the app handles and what it does with it.
 
