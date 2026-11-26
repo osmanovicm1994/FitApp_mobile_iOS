@@ -24,6 +24,7 @@ final class DriveBackupService {
     }
 
     private static let fileName = "fitapp-backup.json"
+    private static let maxBackupBytes = 10 * 1024 * 1024
     private static let filesURL = "https://www.googleapis.com/drive/v3/files"
     private static let uploadURL = "https://www.googleapis.com/upload/drive/v3/files"
 
@@ -47,9 +48,11 @@ final class DriveBackupService {
         ]
         let (data, _) = try await send(URLRequest(url: components.url!))
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let files = json["files"] as? [[String: Any]],
-              let first = files.first,
-              let file = Self.remoteFile(from: first) else { return nil }
+              let files = json["files"] as? [[String: Any]] else {
+            throw CloudError.server(0)
+        }
+        guard let first = files.first else { return nil }
+        guard let file = Self.remoteFile(from: first) else { throw CloudError.server(0) }
         return file
     }
 
@@ -57,11 +60,13 @@ final class DriveBackupService {
         var components = URLComponents(string: "\(Self.filesURL)/\(file.id)")!
         components.queryItems = [URLQueryItem(name: "alt", value: "media")]
         let (data, _) = try await send(URLRequest(url: components.url!))
+        guard data.count <= Self.maxBackupBytes else { throw CloudError.backupUnreadable }
         return data
     }
 
     /// Creates the backup file, or replaces its content when `replacing` is given.
     func upload(_ content: Data, replacing existing: RemoteFile?) async throws -> RemoteFile {
+        guard content.count <= Self.maxBackupBytes else { throw CloudError.backupUnreadable }
         if let existing {
             do {
                 return try await update(content, file: existing)
@@ -171,7 +176,9 @@ final class DriveBackupService {
     // MARK: - Parsing
 
     private static func remoteFile(from json: [String: Any]) -> RemoteFile? {
-        guard let id = json["id"] as? String else { return nil }
+        guard let id = json["id"] as? String,
+              !id.isEmpty,
+              id.rangeOfCharacter(from: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" ).inverted) == nil else { return nil }
         let modified = (json["modifiedTime"] as? String).flatMap(parseDate) ?? Date()
         return RemoteFile(id: id, modified: modified)
     }

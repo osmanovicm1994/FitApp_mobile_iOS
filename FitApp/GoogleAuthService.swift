@@ -80,6 +80,9 @@ enum CloudError: LocalizedError {
 struct GoogleAccount: Codable {
     var refreshToken: String
     var email: String
+    // Stable account identity from Google's authenticated userinfo endpoint.
+    // Optional so credentials written by older builds still decode.
+    var subject: String? = nil
     var autoBackup: Bool = true
     var lastBackupAt: Date? = nil
     /// Drive's modifiedTime of the backup file as of this device's last backup/restore.
@@ -107,16 +110,23 @@ private enum KeychainStore {
         return try? JSONDecoder().decode(GoogleAccount.self, from: data)
     }
 
-    static func save(_ account: GoogleAccount) {
-        guard let data = try? JSONEncoder().encode(account) else { return }
+    static func save(_ account: GoogleAccount) -> Bool {
+        guard let data = try? JSONEncoder().encode(account) else { return false }
         let update = [kSecValueData as String: data]
         let status = SecItemUpdate(baseQuery as CFDictionary, update as CFDictionary)
+        if status == errSecSuccess { return true }
         if status == errSecItemNotFound {
             var add = baseQuery
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(add as CFDictionary, nil)
+            let addStatus = SecItemAdd(add as CFDictionary, nil)
+            if addStatus == errSecSuccess { return true }
+            // A concurrent connect may have inserted the item between update and add.
+            if addStatus == errSecDuplicateItem {
+                return SecItemUpdate(baseQuery as CFDictionary, update as CFDictionary) == errSecSuccess
+            }
         }
+        return false
     }
 
     static func delete() {
@@ -131,6 +141,7 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
     private static let authURL = "https://accounts.google.com/o/oauth2/v2/auth"
     private static let tokenURL = URL(string: "https://oauth2.googleapis.com/token")!
     private static let revokeURL = URL(string: "https://oauth2.googleapis.com/revoke")!
+    private static let userInfoURL = URL(string: "https://openidconnect.googleapis.com/v1/userinfo")!
 
     private(set) var account: GoogleAccount?
     private var accessToken: String?
@@ -147,9 +158,9 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
     func signIn() async throws -> GoogleAccount {
         guard CloudConfig.isConfigured else { throw CloudError.notConfigured }
 
-        let verifier = Self.randomURLSafeString(byteCount: 48)
+        let verifier = try Self.randomURLSafeString(byteCount: 48)
         let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URLEncoded
-        let state = Self.randomURLSafeString(byteCount: 16)
+        let state = try Self.randomURLSafeString(byteCount: 16)
 
         var components = URLComponents(string: Self.authURL)!
         components.queryItems = [
@@ -193,17 +204,30 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
         accessToken = token
         accessTokenExpiry = Date().addingTimeInterval(expires)
 
-        let email = Self.email(fromIDToken: json["id_token"] as? String) ?? "Google account"
+        // Read identity claims from Google's authenticated userinfo endpoint. Decoding an ID
+        // token's payload locally would not verify its signature, issuer, audience, or expiry.
+        let userInfo = try await fetchUserInfo(accessToken: token)
+        guard let subject = userInfo["sub"] as? String, !subject.isEmpty else {
+            throw CloudError.authFailed("Google did not return an account identity.")
+        }
+        let email = (userInfo["email_verified"] as? Bool == true
+            ? userInfo["email"] as? String
+            : nil) ?? "Google account"
 
         // Same account reconnecting keeps its sync settings; a different account starts fresh.
-        var newAccount = GoogleAccount(refreshToken: refreshToken, email: email)
-        if let old = account, old.email == email {
+        var newAccount = GoogleAccount(refreshToken: refreshToken, email: email, subject: subject)
+        if let old = account, old.subject == subject {
             newAccount.autoBackup = old.autoBackup
             newAccount.lastBackupAt = old.lastBackupAt
             newAccount.lastRemoteModified = old.lastRemoteModified
         }
+        guard KeychainStore.save(newAccount) else {
+            // Keep the previous account/token record intact if Keychain refuses an update.
+            accessToken = nil
+            accessTokenExpiry = .distantPast
+            throw CloudError.authFailed("FitApp could not securely save the Google connection.")
+        }
         account = newAccount
-        KeychainStore.save(newAccount)
         return newAccount
     }
 
@@ -240,7 +264,7 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
         guard var current = account else { return }
         change(&current)
         account = current
-        KeychainStore.save(current)
+        _ = KeychainStore.save(current)
     }
 
     // MARK: Sign out
@@ -294,6 +318,25 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
 
     // MARK: Helpers
 
+    private func fetchUserInfo(accessToken: String) async throws -> [String: Any] {
+        var request = URLRequest(url: Self.userInfoURL)
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw CloudError.network
+        }
+        guard let http = response as? HTTPURLResponse else { throw CloudError.network }
+        guard (200..<300).contains(http.statusCode),
+              let result = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw CloudError.authFailed("Google could not verify the connected account.")
+        }
+        return result
+    }
+
     /// POSTs a form and returns the JSON object. 400/401 answers from the token endpoint mean the
     /// grant is no longer valid (`notSignedIn`).
     private func postForm(_ url: URL, _ params: [String: String]) async throws -> [String: Any] {
@@ -333,21 +376,12 @@ final class GoogleAuthService: NSObject, ASWebAuthenticationPresentationContextP
         }
     }
 
-    private static func randomURLSafeString(byteCount: Int) -> String {
+    private static func randomURLSafeString(byteCount: Int) throws -> String {
         var bytes = [UInt8](repeating: 0, count: byteCount)
-        _ = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes)
+        guard SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes) == errSecSuccess else {
+            throw CloudError.authFailed("Secure sign-in could not be initialized.")
+        }
         return Data(bytes).base64URLEncoded
-    }
-
-    private static func email(fromIDToken token: String?) -> String? {
-        guard let token else { return nil }
-        let parts = token.split(separator: ".")
-        guard parts.count >= 2 else { return nil }
-        var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
-        while payload.count % 4 != 0 { payload += "=" }
-        guard let data = Data(base64Encoded: payload),
-              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
-        return json["email"] as? String
     }
 }
 
