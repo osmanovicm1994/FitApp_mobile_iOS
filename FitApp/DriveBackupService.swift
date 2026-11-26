@@ -148,10 +148,10 @@ final class DriveBackupService {
             request.timeoutInterval = 60
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-            let data: Data
+            let bytes: URLSession.AsyncBytes
             let response: URLResponse
             do {
-                (data, response) = try await URLSession.shared.data(for: request)
+                (bytes, response) = try await URLSession.shared.bytes(for: request)
             } catch {
                 throw CloudError.network
             }
@@ -159,6 +159,25 @@ final class DriveBackupService {
 
             switch http.statusCode {
             case 200..<300:
+                if http.expectedContentLength > Int64(Self.maxBackupBytes) {
+                    throw CloudError.backupUnreadable
+                }
+                var data = Data()
+                if http.expectedContentLength > 0 {
+                    data.reserveCapacity(Int(http.expectedContentLength))
+                }
+                do {
+                    for try await byte in bytes {
+                        guard data.count < Self.maxBackupBytes else {
+                            throw CloudError.backupUnreadable
+                        }
+                        data.append(byte)
+                    }
+                } catch let error as CloudError {
+                    throw error
+                } catch {
+                    throw CloudError.network
+                }
                 return (data, http)
             case 401 where attempt == 0:
                 token = try await auth.refreshAccessToken()
