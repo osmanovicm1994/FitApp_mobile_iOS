@@ -1,5 +1,5 @@
 // NutritionView.swift
-// Daily nutrition tracking: water intake, protein, carbs, fats, calories.
+// Daily nutrition tracking: water intake, protein, carbs, fats, calories, quick log and My Foods.
 
 import SwiftUI
 import Combine  // explicit import
@@ -7,6 +7,7 @@ import Combine  // explicit import
 struct NutritionView: View {
     @EnvironmentObject var appState: AppState
     @State private var showLogMacros: Bool = false
+    @State private var showResetDayAlert: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -18,6 +19,12 @@ struct NutritionView: View {
                     macroCard
                     // Quick log buttons
                     quickActionsCard
+                    // The user's own foods
+                    MyFoodsCard()
+                    // Meals built from several foods
+                    MyMealsCard()
+                    // Today's meals (with delete)
+                    mealsCard
                 }
                 .padding()
             }
@@ -28,7 +35,7 @@ struct NutritionView: View {
                         .accessibilityIdentifier("log_macros_button")
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Reset Day") { appState.resetNutrition() }
+                    Button("Reset Day") { showResetDayAlert = true }
                         .foregroundColor(.red)
                         .accessibilityIdentifier("reset_nutrition_button")
                 }
@@ -38,6 +45,12 @@ struct NutritionView: View {
             }
         }
         .accessibilityIdentifier("nutrition_view")
+        .alert("Reset today's nutrition?", isPresented: $showResetDayAlert) {
+            Button("Reset", role: .destructive) { appState.resetNutrition() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes all meals and water logged today. Earlier days are kept.")
+        }
     }
 
     // MARK: - Water Card
@@ -106,6 +119,12 @@ struct NutritionView: View {
                     .accessibilityIdentifier("calories_label")
             }
 
+            Text("Daily goal: \(Int(appState.dailyCalorieGoal)) kcal (estimate)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("calorie_goal_label")
+
             HStack(spacing: 12) {
                 MacroRing(
                     label: "Protein",
@@ -118,7 +137,7 @@ struct NutritionView: View {
                 MacroRing(
                     label: "Carbs",
                     value: appState.todayNutrition.carbsG,
-                    goal: 250,
+                    goal: appState.dailyCarbsGoalG,
                     unit: "g",
                     color: .orange,
                     accessID: "carbs_ring"
@@ -126,7 +145,7 @@ struct NutritionView: View {
                 MacroRing(
                     label: "Fats",
                     value: appState.todayNutrition.fatsG,
-                    goal: 65,
+                    goal: appState.dailyFatGoalG,
                     unit: "g",
                     color: .yellow,
                     accessID: "fats_ring"
@@ -137,6 +156,49 @@ struct NutritionView: View {
         .background(Color.secondary.opacity(0.06))
         .cornerRadius(16)
         .accessibilityIdentifier("macro_card")
+    }
+
+    // MARK: - Today's Meals
+
+    private var mealsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Today's Meals")
+                .font(.headline)
+
+            if appState.todayMeals.isEmpty {
+                Text("No meals logged yet today.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .accessibilityIdentifier("no_meals_label")
+            } else {
+                ForEach(Array(appState.todayMeals.enumerated()), id: \.element.id) { index, meal in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(meal.name)
+                                .font(.subheadline.bold())
+                            Text("\(Int(meal.calories)) kcal · P \(Int(meal.proteinG)) · C \(Int(meal.carbsG)) · F \(Int(meal.fatsG))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            appState.removeMeal(id: meal.id)
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                        .accessibilityIdentifier("delete_meal_\(index)")
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("meal_row_\(index)")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.secondary.opacity(0.06))
+        .cornerRadius(16)
+        .accessibilityIdentifier("meals_card")
     }
 
     // MARK: - Quick Actions
@@ -153,7 +215,9 @@ struct NutritionView: View {
                             protein: meal.protein,
                             carbs: meal.carbs,
                             fats: meal.fats,
-                            calories: meal.calories
+                            calories: meal.calories,
+                            name: meal.name,
+                            source: "quick"
                         )
                     }) {
                         VStack(spacing: 4) {
@@ -231,6 +295,11 @@ struct LogMacrosSheet: View {
     @State private var fats: String = ""
     @State private var calories: String = ""
     @State private var mealName: String = ""
+    @State private var saveAsFood: Bool = false
+
+    private var hasName: Bool {
+        !mealName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         NavigationStack {
@@ -245,20 +314,42 @@ struct LogMacrosSheet: View {
                     macroRow(label: "Fats (g)",    value: $fats,    id: "log_fats_field")
                     macroRow(label: "Calories",    value: $calories, id: "log_calories_field")
                 }
+                if hasName {
+                    Section {
+                        Toggle("Save as a custom food", isOn: $saveAsFood)
+                            .accessibilityIdentifier("save_as_custom_food_toggle")
+                    } footer: {
+                        Text("Adds this meal to My Foods as one serving, so you can log it again in one tap.")
+                    }
+                }
             }
             .navigationTitle("Log Macros")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        let p = parsed?.protein ?? 0
+                        let c = parsed?.carbs ?? 0
+                        let f = parsed?.fats ?? 0
+                        let k = parsed?.calories ?? 0
                         appState.logNutrition(
-                            protein:  Double(protein)  ?? 0,
-                            carbs:    Double(carbs)    ?? 0,
-                            fats:     Double(fats)     ?? 0,
-                            calories: Double(calories) ?? 0
+                            protein:  p,
+                            carbs:    c,
+                            fats:     f,
+                            calories: k,
+                            name: mealName,
+                            source: "manual"
                         )
+                        if saveAsFood && hasName {
+                            appState.saveCustomFood(CustomFood(name: mealName,
+                                                               calories: k,
+                                                               proteinG: p,
+                                                               carbsG: c,
+                                                               fatsG: f))
+                        }
                         dismiss()
                     }
+                    .disabled(parsed == nil)
                     .accessibilityIdentifier("save_macros_button")
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -268,6 +359,23 @@ struct LogMacrosSheet: View {
             }
         }
         .accessibilityIdentifier("log_macros_sheet")
+    }
+
+    /// Empty field = 0. Invalid text, negative or absurd values make the whole form invalid.
+    private func fieldValue(_ text: String) -> Double? {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return 0 }
+        guard let v = NumberParsing.double(from: text), v >= 0, v <= 20000 else { return nil }
+        return v
+    }
+
+    /// nil when any field is invalid or when everything is zero.
+    private var parsed: (protein: Double, carbs: Double, fats: Double, calories: Double)? {
+        guard let p = fieldValue(protein),
+              let c = fieldValue(carbs),
+              let f = fieldValue(fats),
+              let k = fieldValue(calories),
+              p + c + f + k > 0 else { return nil }
+        return (p, c, f, k)
     }
 
     private func macroRow(label: String, value: Binding<String>, id: String) -> some View {

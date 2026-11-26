@@ -16,6 +16,8 @@ struct ProfileView: View {
                     profileHeader
                     // Stats summary
                     statsGrid
+                    // Weight + measurements progress
+                    bodyProgressCard
                     // Workout summary
                     workoutSummaryCard
                     // Goal card
@@ -69,10 +71,55 @@ struct ProfileView: View {
     private var statsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             StatCell(label: "Age",    value: "\(appState.profile.age)", unit: "yrs",  id: "profile_age_cell")
-            StatCell(label: "Weight", value: String(format: "%.0f", appState.profile.weightKg), unit: "kg", id: "profile_weight_cell")
-            StatCell(label: "Height", value: String(format: "%.0f", appState.profile.heightCm), unit: "cm", id: "profile_height_cell")
+            StatCell(label: "Weight", value: NumberParsing.display(appState.profile.weightKg), unit: "kg", id: "profile_weight_cell")
+            StatCell(label: "Height", value: NumberParsing.display(appState.profile.heightCm), unit: "cm", id: "profile_height_cell")
         }
         .accessibilityIdentifier("profile_stats_grid")
+    }
+
+    // MARK: - Body Progress
+
+    private var bodyProgressCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Body Progress", systemImage: "chart.line.uptrend.xyaxis")
+                .font(.headline)
+
+            if let change = appState.totalWeightChangeKg {
+                HStack {
+                    Text("Weight since you started")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(BodyFormat.signed(change)) kg")
+                        .font(.subheadline.bold())
+                        .accessibilityIdentifier("profile_weight_change_label")
+                }
+            } else {
+                Text("Log your weight and body measurements to see your progress here.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .accessibilityIdentifier("profile_body_progress_hint")
+            }
+
+            NavigationLink("Track Weight →") {
+                WeightTrackerView()
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.blue)
+            .accessibilityIdentifier("profile_weight_tracker_link")
+
+            NavigationLink("Body Measurements →") {
+                MeasurementsView()
+            }
+            .font(.subheadline.bold())
+            .foregroundColor(.blue)
+            .accessibilityIdentifier("profile_measurements_link")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.secondary.opacity(0.06))
+        .cornerRadius(16)
+        .accessibilityIdentifier("body_progress_card")
     }
 
     // MARK: - Workout Summary
@@ -248,6 +295,10 @@ struct WorkoutHistoryView: View {
                         Text("\(session.exercises.count) exercises")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        Text("\(session.completedCount) completed")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                            .accessibilityIdentifier("workout_history_completed_\(session.id)")
                     }
                     .padding(.vertical, 4)
                     .accessibilityIdentifier("workout_history_row_\(session.id)")
@@ -339,6 +390,7 @@ struct EditProfileSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveProfile() }
+                        .disabled(!isValid)
                         .accessibilityIdentifier("save_profile_button")
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -351,25 +403,36 @@ struct EditProfileSheet: View {
         .accessibilityIdentifier("edit_profile_sheet")
     }
 
+    /// Age, weight and height must parse (comma or dot decimals) and fall inside ProfileLimits.
+    private var isValid: Bool {
+        guard let a = NumberParsing.int(from: age), ProfileLimits.age.contains(a),
+              let w = NumberParsing.double(from: weightKg), ProfileLimits.weightKg.contains(w),
+              let h = NumberParsing.double(from: heightCm), ProfileLimits.heightCm.contains(h) else {
+            return false
+        }
+        return true
+    }
+
     private func populateFromProfile() {
         name         = appState.profile.name
         age          = "\(appState.profile.age)"
-        weightKg     = String(format: "%.0f", appState.profile.weightKg)
-        heightCm     = String(format: "%.0f", appState.profile.heightCm)
+        weightKg     = NumberParsing.display(appState.profile.weightKg)
+        heightCm     = NumberParsing.display(appState.profile.heightCm)
         selectedGoal = appState.profile.goal
         selectedAvatar = appState.profile.avatarEmoji
     }
 
     private func saveProfile() {
-        appState.profile = UserProfile(
+        // updateProfile also records a changed weight as today's weigh-in (weight history).
+        appState.updateProfile(UserProfile(
             id: appState.profile.id,
-            name: name,
-            age: Int(age) ?? appState.profile.age,
-            weightKg: Double(weightKg) ?? appState.profile.weightKg,
-            heightCm: Double(heightCm) ?? appState.profile.heightCm,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            age: NumberParsing.int(from: age) ?? appState.profile.age,
+            weightKg: NumberParsing.double(from: weightKg).map { NumberParsing.roundedToTenth($0) } ?? appState.profile.weightKg,
+            heightCm: NumberParsing.double(from: heightCm).map { NumberParsing.roundedToTenth($0) } ?? appState.profile.heightCm,
             goal: selectedGoal,
             avatarEmoji: selectedAvatar.isEmpty ? appState.profile.avatarEmoji : selectedAvatar
-        )
+        ))
         dismiss()
     }
 }
