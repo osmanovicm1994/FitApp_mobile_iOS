@@ -4,7 +4,7 @@ _Last updated: 12 October 2026_
 
 FitApp ("the app") is a fitness and nutrition tracker for iPhone. This policy explains what data the app handles and what it does with it.
 
-**Short version:** your data stays on your device. If you choose to connect a Google account, a backup file is stored in a private app folder in your own Google Drive. We (the developer) never receive your data, and the app has no ads, no analytics and no tracking.
+**Short version:** your data is stored in the app's private storage on your device. iOS may include app data in the device backups you have enabled. If you connect a Google account, FitApp also stores a backup file in a private app folder in your own Google Drive. We (the developer) never receive your data, and the app has no ads, no analytics and no tracking.
 
 ## Data the app stores on your device
 
@@ -14,7 +14,7 @@ FitApp ("the app") is a fitness and nutrition tracker for iPhone. This policy ex
 - Body tracking: your weight history and the body measurements you choose to record (for example wrist, arm or waist), with dates
 - Settings: dark mode and favorite recipes
 
-This data is stored only in the app's private storage on your iPhone. It is not sent to us. Deleting the app, or using **Settings → Delete All My Data**, removes it from your device.
+This data is stored in the app's private storage on your iPhone and is not sent to us. As part of iOS's normal device-backup behavior, Apple may include app data in an iCloud or computer backup according to your device backup settings. FitApp does not control those system backups; see [Apple's Privacy Policy](https://www.apple.com/legal/privacy/) for how Apple handles iCloud data. Deleting the app, or using **Settings → Delete All My Data**, removes it from the app on your device.
 
 ## Optional Google backup
 
